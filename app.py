@@ -1,10 +1,12 @@
-import sys
+import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-def run_classifier():
+# 1. Cache the data and model training so it only happens ONCE
+@st.cache_resource
+def train_model():
     # Dataset
     emails = [
         "Congratulations! You’ve won a free iPhone", "Claim your lottery prize now",
@@ -30,7 +32,7 @@ def run_classifier():
     )
     X = vectorizer.fit_transform(emails)
 
-    # Split data (stratify ensures balanced spam/ham in train and test)
+    # Split data
     X_train, X_test, y_train, y_test = train_test_split(
         X, labels, test_size=0.25, random_state=42, stratify=labels
     )
@@ -38,23 +40,38 @@ def run_classifier():
     # Train SVM Model
     svm_model = LinearSVC(C=1.0, dual="auto")
     svm_model.fit(X_train, y_train)
-
-    # Evaluate
+    
+    # Calculate accuracy
     y_pred = svm_model.predict(X_test)
-    print(f"Model Accuracy: {accuracy_score(y_test, y_pred) * 100:.2f}%")
+    acc = accuracy_score(y_test, y_pred) * 100
+    
+    return vectorizer, svm_model, acc
 
-    # User Input
-    print("\n--- Spam Detection System ---")
-    new_email = input("Enter a new email message: ")
-    if not new_email.strip():
-        print("Empty input. Exiting.")
-        return
+# --- Streamlit UI Setup ---
+st.set_page_config(page_title="Spam Detector", page_icon="📧")
+st.title("📧 Spam Detection System")
 
-    new_email_vectorized = vectorizer.transform([new_email])
-    prediction = svm_model.predict(new_email_vectorized)
+# Initialize model
+vectorizer, svm_model, accuracy = train_model()
 
-    result = "SPAM" if prediction[0] == 1 else "NOT SPAM (Ham)"
-    print(f"Result: The email is {result}.")
+# Sidebar info
+st.sidebar.write(f"**Model Accuracy:** {accuracy:.2f}%")
+st.sidebar.write("Algorithm: Linear SVC")
 
-if __name__ == "__main__":
-    run_classifier()
+# User Input Section
+st.write("Enter an email message below to check if it's Spam or Ham.")
+user_input = st.text_input("Email Message:", placeholder="e.g., You won a prize!")
+
+if st.button("Predict"):
+    if user_input.strip():
+        # Transformation and Prediction
+        new_email_vectorized = vectorizer.transform([user_input])
+        prediction = svm_model.predict(new_email_vectorized)
+
+        # Result Display
+        if prediction[0] == 1:
+            st.error("🚨 Result: This looks like SPAM!")
+        else:
+            st.success("✅ Result: This is NOT SPAM (Ham).")
+    else:
+        st.warning("Please enter some text first.")

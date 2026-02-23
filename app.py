@@ -4,10 +4,10 @@ from sklearn.svm import LinearSVC
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-# 1. Cache the data and model training so it only happens ONCE
+
 @st.cache_resource
 def train_model():
-    # Dataset
+   
     emails = [
         "Congratulations! You’ve won a free iPhone", "Claim your lottery prize now",
         "Exclusive deal just for you", "Act fast! Limited-time offer",
@@ -22,7 +22,7 @@ def train_model():
     ]
     labels = [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-    # Feature Extraction
+    
     vectorizer = TfidfVectorizer(
         lowercase=True,
         stop_words='english',
@@ -32,43 +32,35 @@ def train_model():
     )
     X = vectorizer.fit_transform(emails)
 
-    # Split data
+   
     X_train, X_test, y_train, y_test = train_test_split(
         X, labels, test_size=0.25, random_state=42, stratify=labels
     )
 
-    # Train SVM Model
     svm_model = LinearSVC(C=1.0, dual="auto")
     svm_model.fit(X_train, y_train)
     
-    # Calculate accuracy
     y_pred = svm_model.predict(X_test)
     acc = accuracy_score(y_test, y_pred) * 100
     
     return vectorizer, svm_model, acc
 
-# --- Streamlit UI Setup ---
 st.set_page_config(page_title="Spam Detector", page_icon="📧")
 st.title("📧 Spam Detection System")
 
-# Initialize model
 vectorizer, svm_model, accuracy = train_model()
 
-# Sidebar info
 st.sidebar.write(f"**Model Accuracy:** {accuracy:.2f}%")
 st.sidebar.write("Algorithm: Linear SVC")
 
-# User Input Section
 st.write("Enter an email message below to check if it's Spam or Ham.")
 user_input = st.text_input("Email Message:", placeholder="e.g., You won a prize!")
 
 if st.button("Predict"):
     if user_input.strip():
-        # Transformation and Prediction
         new_email_vectorized = vectorizer.transform([user_input])
         prediction = svm_model.predict(new_email_vectorized)
 
-        # Result Display
         if prediction[0] == 1:
             st.error("🚨 Result: This looks like SPAM!")
         else:
